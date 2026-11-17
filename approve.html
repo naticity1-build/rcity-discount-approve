@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>אישור הנחה</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  main { max-width: 560px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: .92rem; }
+  .meta dt { color: var(--muted); }
+  .meta dd { margin: 0; }
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .summary .big { font-size: 1.45rem; font-weight: 700; }
+  .summary .disc .big { color: var(--bad); }
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .line:last-child { border-bottom: none; }
+  .line .name { font-weight: 500; }
+  .line .prices { text-align: end; }
+  .line .was { text-decoration: line-through; color: var(--muted); font-size: .85rem; }
+  .line .sub { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: .85rem; }
+  .line.ctx { opacity: .75; }
+  .line .unit { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; background: var(--bg); border-radius: 8px; padding: 6px 10px; margin-top: 4px; font-size: .9rem; }
+  .line .unit b { font-size: 1.05rem; }
+  .seg { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 6px; }
+  .seg button { border: none; border-radius: 0; padding: .6em; background: var(--surface); color: var(--muted); }
+  .seg button + button { border-inline-start: 1px solid var(--line); }
+  .seg button[aria-pressed="true"].a { background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+  .seg button[aria-pressed="true"].r { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  .quick { display: flex; gap: 8px; justify-content: flex-end; }
+  .quick button { font-size: .85rem; padding: .35em .8em; }
+  #send { padding: .9em; font-size: 1.05rem; }
+  textarea { min-height: 64px; resize: vertical; }
+  details summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
+  .result { text-align: center; padding: 32px 16px; }
+  .result .icon { font-size: 2.6rem; line-height: 1; margin-bottom: 8px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="demo" class="demo-banner hidden">מצב הדגמה: נתונים לדוגמה, שום דבר לא נשלח לפריוריטי</div>
+<main>
+  <div id="loading" class="card result"><span class="muted">טוען את פרטי ההזמנה…</span></div>
+
+  <section id="view" class="hidden" style="display:grid;gap:12px">
+    <div class="card">
+      <div class="head">
+        <h1>אישור הנחה</h1>
+        <span id="level" class="badge warn"></span>
+      </div>
+      <dl class="meta">
+        <dt>הזמנה</dt><dd id="ordname" class="num"></dd>
+        <dt>סניף</dt><dd id="branch"></dd>
+        <dt>מוכר</dt><dd id="seller"></dd>
+        <dt>לקוח</dt><dd id="customer"></dd>
+      </dl>
+    </div>
+
+    <div class="card summary">
+      <div><div class="muted">מחיר מחירון</div><div id="listTotal" class="big num"></div></div>
+      <div class="disc"><div class="muted">הנחה בהזמנה</div><div id="orderPct" class="big num"></div><small id="discountTotal" class="num"></small></div>
+      <div><div class="muted">לתשלום</div><div id="total" class="big num"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="head">
+        <div>
+          <h2 id="needTitle" style="margin:0">כל ההזמנה</h2>
+          <small id="needSub" class="muted"></small>
+        </div>
+        <div class="quick"><button id="allA">אשר הכול</button><button id="allR">דחה הכול</button></div>
+      </div>
+      <div id="need"></div>
+    </div>
+
+    <div class="card" style="display:grid;gap:10px">
+      <label for="note">הערה <small>(חובה כשיש דחייה, המוכר יקבל אותה ב-SMS)</small></label>
+      <textarea id="note" maxlength="120" placeholder="למשל: אושר בגלל לקוח חוזר"></textarea>
+      <button id="send" class="primary">שלח החלטה</button>
+      <div id="confirmBox" class="hidden" style="display:grid;gap:8px">
+        <div id="confirmText" style="font-weight:600;text-align:center"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button id="confirmYes" class="primary">כן, שלח</button>
+          <button id="confirmNo">ביטול</button>
+        </div>
+      </div>
+      <small id="err" class="hidden" style="color:var(--bad)"></small>
+    </div>
+  </section>
+
+  <section id="done" class="card result hidden">
+    <div id="doneIcon" class="icon"></div>
+    <h1 id="doneTitle"></h1>
+    <p id="doneText" class="muted"></p>
+  </section>
+</main>
+<div id="toast" class="toast"></div>
+
+<script src="config.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const cfg = window.DA_CONFIG || {};
+const params = new URLSearchParams(location.search);
+const token = params.get("t") || "";
+const demo = !cfg.supabaseUrl || params.has("demo");
+const api = cfg.supabaseUrl + "/functions/v1/discount-approval";
+const ils = (n) => "₪" + Math.round(n).toLocaleString("he-IL");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const DEMO = {
+  ordname: "SO260013515", branch: "סניף 5", seller: "מוכר לדוגמה", customer: "לקוח לדוגמה",
+  requiredLevelName: "מנהל סניף", total: 15260, listTotal: 16454, discountTotal: 1194, orderPct: 7.26, open: true,
+  lines: [
+    { kline: 1, pdes: "ארון גלעד שחור 160X240", family: "8", familyName: "ארונות (רן, לין)", unit: 3000, listUnit: 3409.09, qty: 1, list: 3409.09, net: 3000, pct: 12, sellerMax: 10, needs: true },
+    { kline: 2, pdes: "מיטה גאיה אפור ארגז מצעים 160X200", family: "2", familyName: "מיטות", unit: 3680, listUnit: 4279.07, qty: 1, list: 4279.07, net: 3680, pct: 14, sellerMax: 10, needs: true },
+    { kline: 3, pdes: "מזרון אמבר 160X200", family: "111", familyName: "מזרונים", unit: 1450, listUnit: 1450, qty: 1, list: 1450, net: 1450, pct: 0, sellerMax: 10 },
+    { kline: 4, pdes: "שולחן פורטוגל", family: "5", familyName: "שולחנות אוכל", unit: 3590, listUnit: 3590, qty: 1, list: 3590, net: 3590, pct: 0, sellerMax: 10 },
+    { kline: 5, pdes: "כסא רום בוקלה שחור", family: "6", familyName: "כיסאות", unit: 590, listUnit: 621.05, qty: 6, list: 3726.32, net: 3540, pct: 5, sellerMax: 5 },
+  ],
+};
+
+let data, decisions = {};
+
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2600); }
+
+function finish(kind, title, text) {
+  $("view").classList.add("hidden"); $("loading").classList.add("hidden");
+  $("done").classList.remove("hidden");
+  $("doneIcon").textContent = kind === "ok" ? "✅" : kind === "bad" ? "⛔" : kind === "mix" ? "☑️" : "ℹ️";
+  $("doneTitle").textContent = title;
+  $("doneText").textContent = text || "";
+}
+
+function lineHtml(l, withToggle) {
+  const sub = l.pct > 0
+    ? `<span class="badge ${l.needs ? "bad" : "ok"} num">${l.pct}% הנחה</span>${l.needs ? `<span class="muted">מותר למוכר עד ${l.sellerMax}%</span>` : ""}`
+    : `<span class="badge">ללא הנחה</span>`;
+  const d = decisions[l.kline];
+  return `<div class="line${withToggle ? "" : " ctx"}">
+    <div><div class="name">${esc(l.pdes)}</div><small class="muted">${l.qty > 1 ? `כמות ${l.qty} · ` : ""}${esc(l.familyName || "משפחה " + l.family)}</small></div>
+    <div class="prices">${l.pct > 0 ? `<div class="was num">${ils(l.list)}</div>` : ""}<div class="num">${ils(l.net)}</div></div>
+    <div class="sub">${sub}</div>
+    ${withToggle ? `<div class="unit"><span>מחיר ליחידה לאישור:</span> <b class="num">${ils(l.unit)}</b>${l.listUnit > l.unit ? `<span class="muted num">במקום ${ils(l.listUnit)} במחירון</span>` : ""}${l.qty > 1 ? `<span class="muted">× ${l.qty} יחידות</span>` : ""}</div>` : ""}
+    ${withToggle ? `<div class="seg" role="group" aria-label="החלטה על ${esc(l.pdes)}">
+      <button class="a" data-k="${l.kline}" data-d="approve" aria-pressed="${d === "approve"}">אשר</button>
+      <button class="r" data-k="${l.kline}" data-d="reject" aria-pressed="${d === "reject"}">דחה</button></div>` : ""}
+  </div>`;
+}
+
+function renderLines() {
+  // The whole order, in its own line order; only the exceeding lines get a decision toggle.
+  const need = data.lines.filter((l) => l.needs);
+  $("needTitle").textContent = `כל ההזמנה (${data.lines.length} פריטים)`;
+  $("needSub").textContent = need.length === 1 ? "שורה אחת דורשת אישור" : `${need.length} שורות דורשות אישור`;
+  $("need").innerHTML = data.lines.map((l) => lineHtml(l, !!l.needs)).join("");
+  const rej = need.filter((l) => decisions[l.kline] === "reject").length;
+  $("send").textContent = rej === 0 ? "אשר" : rej === need.length ? "דחה" : `שלח: ${need.length - rej} אושרו, ${rej} נדחו`;
+  $("send").className = rej === need.length ? "bad" : "primary";
+}
+
+function render(d) {
+  data = d;
+  for (const l of d.lines) if (l.needs) decisions[l.kline] = "approve";
+  $("loading").classList.add("hidden");
+  $("view").classList.remove("hidden");
+  $("ordname").textContent = d.ordname;
+  $("branch").textContent = d.branch;
+  $("seller").textContent = d.seller;
+  $("customer").textContent = d.customer;
+  $("level").textContent = "נדרש: " + (d.requiredLevelName || "אישור");
+  $("listTotal").textContent = ils(d.listTotal);
+  $("orderPct").textContent = d.orderPct + "%";
+  $("discountTotal").textContent = ils(d.discountTotal);
+  $("total").textContent = ils(d.total);
+  renderLines();
+  if (!d.open) finish("info", "הבקשה כבר לא פתוחה", d.closedReason);
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-k]");
+  if (!b) return;
+  decisions[b.dataset.k] = b.dataset.d;
+  renderLines();
+});
+$("allA").onclick = () => { for (const k in decisions) decisions[k] = "approve"; renderLines(); };
+$("allR").onclick = () => { for (const k in decisions) decisions[k] = "reject"; renderLines(); };
+
+async function load() {
+  if (demo) { $("demo").classList.remove("hidden"); return render(DEMO); }
+  if (!token) return finish("bad", "קישור לא תקין", "חסר קוד בקישור. פתח את הקישור מה-SMS.");
+  try {
+    const res = await fetch(api + "?t=" + encodeURIComponent(token), { headers: { apikey: cfg.anonKey } });
+    const d = await res.json();
+    if (!res.ok) return finish("bad", "לא ניתן לפתוח", d.error);
+    render(d);
+  } catch { finish("bad", "אין חיבור", "בדוק את החיבור לאינטרנט ונסה שוב."); }
+}
+
+$("send").onclick = async () => {
+  const note = $("note").value.trim();
+  const vals = Object.values(decisions);
+  const rej = vals.filter((v) => v === "reject").length, ok = vals.length - rej;
+  $("err").classList.add("hidden");
+  if (rej && !note) {
+    $("err").textContent = "יש שורה שנדחתה: צריך לכתוב סיבה, המוכר יקבל אותה ב-SMS.";
+    $("err").classList.remove("hidden"); $("note").focus(); return;
+  }
+  // In-page confirmation (browser confirm() dialogs are blocked in some viewers).
+  $("confirmText").textContent = rej === 0 ? "לאשר את ההנחה?" : ok === 0 ? "לדחות את ההנחה?" : `לאשר ${ok} שורות ולדחות ${rej}?`;
+  $("send").classList.add("hidden");
+  $("confirmBox").classList.remove("hidden");
+};
+$("confirmNo").onclick = () => { $("confirmBox").classList.add("hidden"); $("send").classList.remove("hidden"); };
+$("confirmYes").onclick = async () => {
+  const note = $("note").value.trim();
+  const vals = Object.values(decisions);
+  const rej = vals.filter((v) => v === "reject").length, ok = vals.length - rej;
+  $("confirmYes").disabled = true;
+  try {
+    if (demo) { await new Promise((r) => setTimeout(r, 500)); }
+    else {
+      const res = await fetch(api, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: cfg.anonKey },
+        body: JSON.stringify({ t: token, decisions, note }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        if (res.status === 409 && d.refresh) {
+          // Prices changed in Priority: show the current ones and let the approver decide again.
+          $("confirmBox").classList.add("hidden"); $("send").classList.remove("hidden"); $("confirmYes").disabled = false;
+          decisions = {}; await load();
+          $("err").textContent = d.error; $("err").classList.remove("hidden"); window.scrollTo(0, 0);
+          return;
+        }
+        if (res.status === 409) return finish("info", "לא ניתן להשלים", d.error);
+        throw new Error(d.error);
+      }
+    }
+    if (rej === 0) finish("ok", "ההנחה אושרה", "השורות שוחררו בפריוריטי והמוכר יכול להמשיך ולחייב. המוכר קיבל הודעה.");
+    else if (ok === 0) finish("bad", "ההנחה נדחתה", "השורות נשארות נעולות עד שהמוכר יתקן את המחיר. המוכר קיבל הודעה עם הסיבה.");
+    else finish("mix", "ההחלטה נשלחה", `${ok} שורות שוחררו, ${rej} נשארות נעולות עד תיקון המחיר. המוכר קיבל הודעה.`);
+  } catch (e) {
+    $("confirmYes").disabled = false;
+    toast(e.message || "שגיאה, נסה שוב");
+  }
+};
+
+load();
+</script>
+</body>
+</html>
