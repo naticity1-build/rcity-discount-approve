@@ -329,6 +329,10 @@ $("refreshDash").onclick = renderDashboard;
 $("dashPeriod").onchange = renderDashboard;
 $("histStatus").onchange = renderHistory;
 
+// Israeli mobile: 10 digits starting with 05 (a leading 972 counts as 0). InforU rejects anything else.
+const phoneOk = (p) => { let d = String(p || "").replace(/\D/g, ""); if (d.startsWith("972")) d = "0" + d.slice(3); return /^05\d{8}$/.test(d); };
+const PHONE_HINT = "צריך 10 ספרות שמתחילות ב-05";
+
 function validate() {
   const lv = state.levels.map((l) => l.level).filter((l) => l > 0);
   if (lv.some((l) => effective("*", l) === undefined)) return "בשורת ברירת המחדל חייב להיות ערך לכל דרג";
@@ -342,10 +346,14 @@ function validate() {
   }
   for (const a of state.approvers) {
     if (!a.name.trim()) return "יש מאשר בלי שם";
-    if (a.active && a.phone.replace(/\D/g, "").length < 9) return `למאשר ${a.name} אין טלפון תקין`;
+    if (a.active && !phoneOk(a.phone)) return `הטלפון של ${a.name} לא תקין: ${PHONE_HINT}`;
   }
   if (state.branches.some((b) => !b.code)) return "יש סניף בלי קוד";
   if (state.sellers.some((s) => !s.agent_code || !s.phone)) return "יש מוכר בלי קוד או טלפון";
+  const badSeller = state.sellers.find((s) => !phoneOk(s.phone));
+  if (badSeller) return `הטלפון של המוכר ${badSeller.name || badSeller.agent_code} לא תקין: ${PHONE_HINT}`;
+  const fb = state.settings.fallback_phone;
+  if (fb && !phoneOk(fb)) return `טלפון הגיבוי לא תקין: ${PHONE_HINT}`;
   return null;
 }
 
