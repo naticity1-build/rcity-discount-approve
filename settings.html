@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>הגדרות אישור הנחות</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  header { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1100px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  nav { max-width: 1100px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; overflow-x: auto; }
+  nav button { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 12px; white-space: nowrap; color: var(--muted); }
+  nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .tools .group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .scroll { overflow-x: auto; }
+  td input { min-width: 64px; }
+  td select { min-width: 140px; }
+  #approversTable td:nth-child(4) { min-width: 300px; }
+  td input.pct { width: 76px; text-align: center; }
+  td input.pct::placeholder { color: var(--muted); opacity: .6; }
+  tr.default-row td { background: var(--bg); font-weight: 500; }
+  .help { font-size: .88rem; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .field { display: grid; gap: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips label { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: .82rem; cursor: pointer; }
+  .chips input { width: auto; margin: 0; }
+  #login { max-width: 360px; margin: 64px auto; display: grid; gap: 10px; }
+  .hidden { display: none !important; }
+  .dirty { color: var(--warn); font-size: .85rem; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; }
+  .tile .k { font-size: .82rem; color: var(--muted); }
+  .tile .v { font-size: 1.55rem; font-weight: 700; line-height: 1.2; }
+  .tile .s { font-size: .8rem; color: var(--muted); }
+  .dash h2 { font-size: 1rem; margin: 4px 0 8px; }
+  .dash td.n, .dash th.n { text-align: end; }
+  .barcell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; min-width: 150px; }
+  .barcell .track { flex: 1; max-width: 90px; height: 8px; display: flex; }
+  .barcell .bar-fill { height: 8px; background: var(--accent); border-radius: 4px 0 0 4px; min-width: 2px; }
+  .rate-low { color: var(--bad); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="demo" class="hidden"></div>
+
+<form id="login" class="card hidden">
+  <h1>כניסה להגדרות</h1>
+  <input id="email" type="email" placeholder="מייל" autocomplete="username" required>
+  <input id="password" type="password" placeholder="סיסמה" autocomplete="current-password" required>
+  <button class="primary">כניסה</button>
+  <small id="loginErr" style="color:var(--bad)"></small>
+</form>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="bar">
+      <h1 style="margin:0">אישור הנחות: הגדרות</h1>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="dirty" class="dirty hidden">יש שינויים שלא נשמרו</span>
+        <button id="save" class="primary" disabled>שמור</button>
+      </div>
+    </div>
+    <nav role="tablist" id="tabs">
+      <button role="tab" data-tab="dashboard" aria-selected="true">בקרה</button>
+      <button role="tab" data-tab="limits" aria-selected="false">ספים לפי משפחה</button>
+      <button role="tab" data-tab="approvers">מאשרים</button>
+      <button role="tab" data-tab="levels">דרגים</button>
+      <button role="tab" data-tab="people">סניפים ומוכרים</button>
+      <button role="tab" data-tab="general">כללי</button>
+      <button role="tab" data-tab="history">היסטוריה</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- dashboard -->
+    <section data-panel="dashboard" class="dash" style="display:grid;gap:14px">
+      <div class="tools">
+        <div class="group">
+          <select id="dashPeriod" style="width:auto" aria-label="תקופה">
+            <option value="7">7 ימים אחרונים</option>
+            <option value="30" selected>30 ימים אחרונים</option>
+            <option value="month">החודש</option>
+            <option value="lastmonth">החודש הקודם</option>
+            <option value="90">90 ימים אחרונים</option>
+          </select>
+        </div>
+        <button id="refreshDash">רענן</button>
+      </div>
+      <div class="kpis" id="dashKpis"></div>
+      <div class="card scroll"><h2>מאשרים: כמה קיבל, כמה אישר ובאיזה סכום</h2><table id="dashApprovers"></table></div>
+      <div class="card scroll"><h2>מוכרים: כמה ביקש וכמה אושר לו</h2><table id="dashSellers"></table></div>
+      <div class="card scroll"><h2>לפי סניף</h2><table id="dashBranches"></table></div>
+      <p class="help" style="margin:0">הסכומים הם ההנחה בשקלים (כולל מע"מ) בשורות שנשלחו לאישור. בקשות שהוחלפו בבקשה חדשה של אותה הזמנה לא נספרות.</p>
+    </section>
+
+    <!-- limits -->
+    <section data-panel="limits" class="hidden" style="display:grid;gap:12px">
+      <div class="tools">
+        <p class="help" style="margin:0">כל תא הוא <b>האחוז המקסימלי</b> שהדרג הזה רשאי לתת או לאשר. תא ריק לוקח את הערך משורת ברירת המחדל.<br>
+          מעל הדרג האחרון: הדרג העליון מאשר. מה המוכר נותן לבד נקבע בפריוריטי (ZMET_MAXPERCENT); הטבלה כאן קובעת רק איזה דרג מאשר כל שורה.</p>
+        <div class="group">
+          <button id="importFamilies">ייבא משפחות מפריוריטי</button>
+        </div>
+      </div>
+      <div class="card scroll"><table id="limitsTable"></table></div>
+    </section>
+
+    <!-- approvers -->
+    <section data-panel="approvers" class="hidden" style="display:grid;gap:12px">
+      <div class="tools">
+        <p class="help" style="margin:0">מנהל סניף: מסמנים את הסניפים שלו. דרג גבוה בלי סניפים מסומנים מאשר לכל הרשת.<br>
+          אם אין מאשר לדרג הנדרש, הבקשה עולה לדרג שמעליו.</p>
+        <button id="addApprover">+ מאשר</button>
+      </div>
+      <div class="card scroll"><table id="approversTable"></table></div>
+    </section>
+
+    <!-- levels -->
+    <section data-panel="levels" class="hidden" style="display:grid;gap:12px">
+      <div class="tools">
+        <p class="help" style="margin:0">דרג 1 הוא תמיד מנהל הסניף. אפשר להוסיף כמה דרגים שצריך מעליו.</p>
+        <button id="addLevel">+ דרג</button>
+      </div>
+      <div class="card"><table id="levelsTable"></table></div>
+    </section>
+
+    <!-- branches + sellers -->
+    <section data-panel="people" class="hidden">
+      <div class="grid2">
+        <div class="card" style="display:grid;gap:8px;align-content:start">
+          <div class="tools"><h2 style="margin:0">סניפים</h2><button id="addBranch">+ סניף</button></div>
+          <table id="branchesTable"></table>
+        </div>
+        <div class="card" style="display:grid;gap:8px;align-content:start">
+          <div class="tools"><h2 style="margin:0">מוכרים</h2><button id="addSeller">+ מוכר</button></div>
+          <p class="help" style="margin:0">טלפון של מוכר מאפשר לשלוח לו SMS כשההנחה אושרה או נדחתה. קוד = קוד הסוכן בפריוריטי.</p>
+          <table id="sellersTable"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- general -->
+    <section data-panel="general" class="hidden">
+      <div class="card grid2" id="generalForm"></div>
+      <div class="card" style="margin-top:12px;display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:200px"><label for="testPhone">בדיקת SMS לטלפון</label><input id="testPhone" class="num" placeholder="05X-XXXXXXX"></div>
+        <button id="testSms">שלח SMS בדיקה</button>
+      </div>
+    </section>
+
+    <!-- history -->
+    <section data-panel="history" class="hidden" style="display:grid;gap:12px">
+      <div class="tools">
+        <div class="group">
+          <select id="histStatus" style="width:auto">
+            <option value="">כל הבקשות</option><option value="pending">ממתינות</option><option value="approved">אושרו</option>
+            <option value="rejected">נדחו</option><option value="partial">חלקי</option><option value="auto">אוטומטי</option><option value="superseded">הוחלפו</option>
+          </select>
+        </div>
+        <button id="refreshHist">רענן</button>
+      </div>
+      <div class="card scroll"><table id="historyTable"></table></div>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="config.js"></script>
+<script type="module" src="settings.js"></script>
+</body>
+</html>
